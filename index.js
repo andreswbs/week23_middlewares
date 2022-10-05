@@ -23,7 +23,12 @@ const checkHttpMethod = (req, res, nextFunc) => {
 const secure = (req, res, next) => {
     console.log('Query: ', req.query.token) // /path/?token
     if (req.query.token) {
-        console.log('Hello World')
+        const userName = usersController.getUserFromSession(req.query.token)
+        if (!userName) {
+            res.status(403).send({error: 'Session token is invalid'})
+            return;
+        }
+        req.userName = userName
         next()
     } else {
         res.status(403).send({error: 'No query.token value'})
@@ -40,7 +45,7 @@ app.get('/hello/:name', (req, res) => {
 
 app.get('/hello', secure, (req, res) => {
     res.send({
-        greeting: 'hello ' + req.query.token
+        greeting: 'hello ' + req.userName
     })
 })
 
@@ -53,6 +58,22 @@ app.get('/', (req, res) => {
 app.post('/user', (req, res) => {
     usersController.addUser(req.body)
     res.status(201).send({status: 'OK'})
-}, errorHandler)
+})
 
+app.post('/session', (req, res) => {
+    const token = usersController.validatePassword(req.body)
+    if (token) {
+        res.send({
+            status: 'OK',
+            sessionToken: token
+        })
+    } else {
+        res.status(403).send({
+            status: 'ERROR',
+            message: 'Username or password is not correct'
+        })
+    }
+})
+
+app.use(errorHandler)
 app.listen(port, () => console.log("Ready at port " + port))
